@@ -6,7 +6,7 @@ Three writing desks in the browser. Each desk has a typewriter that you type on,
 
 Written by Claude Fable 5.2.
 
-Inspiration: Claire Vo's video "Claude Fable 5.2 review" on the How I AI YouTube channel (@howiaipodcast).
+Inspiration: Claire Vo's video ["Claude Fable 5.2 review: fast, creative, and finally not annoying"](https://www.youtube.com/watch?v=1gYQc4CL_oo) on the [How I AI](https://www.youtube.com/@howiaipodcast) YouTube channel.
 
 ## The three settings
 
