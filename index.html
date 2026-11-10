@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Typing desk, 1927</title>
+<style>
+  :root { --ink: #efe6d2; --soft: #c9bfa9; --muted: #8f8676; --line: rgba(239, 230, 210, 0.22); --warm: #f0a65a; --panel: rgba(12, 10, 8, 0.78); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #050403; color: var(--ink);
+    font: 13px/1.45 Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+  #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #view.drag { cursor: grabbing; } #view.hot { cursor: pointer; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.5) 100%); }
+  .bar { position: fixed; left: 0; right: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 18px;
+    padding: 12px 16px; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.9); z-index: 2; }
+  .bar > * { pointer-events: auto; }
+  #top { top: 0; padding-bottom: 28px; background: linear-gradient(rgba(5,4,3,0.78), rgba(5,4,3,0.35) 70%, rgba(5,4,3,0)); }
+  #bottom { bottom: 0; align-items: flex-end; padding-top: 28px; background: linear-gradient(rgba(5,4,3,0), rgba(5,4,3,0.62)); }
+  h1 { margin: 0; font-size: 13px; font-weight: normal; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
+  h1 #t-machine { color: var(--soft); letter-spacing: 0.02em; text-transform: none; font-style: italic; margin-left: 8px; }
+  .group { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; }
+  button { font: inherit; color: var(--soft); background: none; border: 0; padding: 2px 0; cursor: pointer; border-bottom: 1px solid transparent; }
+  button:hover, button:focus-visible { color: var(--ink); border-bottom-color: var(--line); outline: none; }
+  button:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+  button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--warm); }
+  button:disabled { color: var(--muted); cursor: default; }
+  label { color: var(--soft); display: inline-flex; align-items: center; gap: 6px; }
+  input[type=range] { width: 84px; height: 14px; accent-color: var(--warm); }
+  #status { max-width: 46ch; color: var(--soft); font-style: italic; min-height: 1.45em; }
+  #status.alert { color: var(--warm); font-style: normal; }
+  #fault, #nosave { color: var(--warm); margin: 0; }
+  #problem { position: fixed; left: 50%; top: 96px; transform: translateX(-50%); width: min(460px, calc(100vw - 32px)); z-index: 5; padding: 14px 16px;
+    background: var(--panel); border: 1px solid var(--warm); border-radius: 3px; color: var(--ink); }
+  #problem p { margin: 0 0 10px; }
+  #reader { position: fixed; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 16px; background: rgba(5, 4, 3, 0.95); }
+  #r-stage { flex: 1; min-height: 0; width: 100%; display: flex; justify-content: center; align-items: center; }
+  #r-stage canvas { width: 100%; height: 100%; object-fit: contain; }
+  #r-stage pre { font-size: 13px; max-height: 100%; max-width: 100%; overflow: auto; color: var(--ink); }
+  #r-copy { width: min(640px, 100%); height: 7em; background: #0c0a08; color: var(--ink); border: 1px solid var(--line); font: 12px/1.4 ui-monospace, Consolas, monospace; }
+  #r-info { margin: 0; color: var(--soft); font-style: italic; text-align: center; }
+  #reader .group { justify-content: center; }
+  #touchbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; padding: 8px 12px; background: #0c0a08; border-top: 1px solid var(--line); }
+  #touchbar p { margin: 0 0 6px; color: var(--soft); }
+  #touchbar .trow { display: flex; gap: 14px; align-items: center; }
+  #tin { flex: 1; min-width: 0; font: 16px/1.3 Georgia, serif; padding: 6px 8px; color: var(--ink); background: #0c0a08; border: 1px solid var(--line); border-radius: 3px; }
+  #tin:focus-visible { outline: 1px solid var(--warm); }
+  .panel { position: fixed; right: 16px; top: 44px; width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 110px); overflow: auto;
+    padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; color: var(--soft); z-index: 1; }
+  .panel h2 { margin: 0 0 6px; font-size: 12px; font-weight: normal; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+  .panel ul { margin: 0; padding-left: 18px; } .panel li { margin: 3px 0; }
+  pre { margin: 0 0 10px; font: 11px/1.4 ui-monospace, Consolas, "Courier New", monospace; color: var(--soft); white-space: pre; overflow-x: auto; }
+  #grid { max-height: 30vh; overflow-y: auto; }
+  #fallback { position: fixed; left: 16px; top: 96px; width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 200px); overflow: auto; z-index: 1; color: var(--soft); }
+  #fallback p { margin: 0 0 10px; color: var(--ink); }
+  #plain { white-space: pre-wrap; }
+  [hidden] { display: none !important; }
+  @media (max-width: 560px) { body { font-size: 12px; } h1 #t-machine { display: block; margin-left: 0; } .bar { padding: 10px 12px; } #status { max-width: none; flex-basis: 100%; }
+    .panel { top: 150px; max-height: calc(100vh - 250px); } #fallback { top: 150px; } }
+</style>
+</head>
+<body>
+<canvas id="view" aria-label="A 1927 writing desk with a Remington Portable typewriter. A Victrola stands at the wall."></canvas>
+<div id="vignette"></div>
+<div id="fallback" hidden><p>The picture of this setting is not ready. The machine, the sound, the state panel and the typed text work.</p><pre id="plain"></pre></div>
+<header class="bar" id="top">
+  <h1><span id="t-name">1927, a writer's room</span> <span id="t-machine">Remington Portable No. 2</span></h1>
+  <nav class="group" aria-label="Setting, by year">
+    <button id="s-a" type="button" aria-pressed="false" title="1897, a news office">1897</button>
+    <button id="s-b" type="button" aria-pressed="true" title="1927, a writer's room">1927</button>
+    <button id="s-c" type="button" aria-pressed="false" title="1962, an office">1962</button>
+  </nav>
+  <nav class="group" aria-label="View and panels">
+    <button id="v-machine" type="button" aria-pressed="true">Machine</button>
+    <button id="v-line" type="button" aria-pressed="false">Line</button>
+    <button id="v-room" type="button" aria-pressed="false">Room</button>
+    <button id="p-help" type="button" aria-pressed="false">Help</button>
+    <button id="p-state" type="button" aria-pressed="false">State</button>
+  </nav>
+</header>
+<footer class="bar" id="bottom">
+  <p id="status" role="status"><span id="start">Press a key or click the picture to start the machine and its sound. This first key does not print.</span></p>
+  <div class="group">
+    <p id="fault" role="alert" hidden></p>
+    <p id="nosave" hidden>This browser does not save the pages. The pages stay only until you close this page.</p>
+    <button id="newsheet" type="button">New sheet</button>
+    <button id="pages" type="button">Pages</button>
+    <button id="kbd" type="button" hidden>Keyboard</button>
+    <button id="act" type="button" hidden></button>
+    <button id="release" type="button">Release the bars</button>
+    <button id="music" type="button" aria-pressed="false">Music: off</button>
+    <button id="m-ver" type="button" title="Change the machine sounds. Version 2 uses measurements of a real typewriter. Version 1 is the first version.">Machine sound: 2</button>
+    <label for="vol">Volume <input id="vol" type="range" min="0" max="1" step="0.01" value="0.5"></label>
+  </div>
+</footer>
+<section class="panel" id="help" hidden>
+  <h2>How to use the machine</h2>
+  <ul id="help-list"></ul>
+</section>
+<section class="panel" id="state-panel" hidden>
+  <h2>Machine state</h2>
+  <pre id="state">The machine is not started.</pre>
+  <h2>Typed text</h2>
+  <pre id="grid"></pre>
+</section>
+
+<div id="problem" role="alert" hidden><p id="problem-text"></p><button id="reload" type="button">Load the page again</button></div>
+<div id="touchbar" hidden>
+  <p id="t-hint">Type in the field. The machine types each character, one after the other. It skips a character that it does not have.</p>
+  <div class="trow"><input id="tin" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="enter" aria-label="Text for the machine"><button id="t-close" type="button">Close keyboard</button></div>
+</div>
+<section id="reader" role="dialog" aria-modal="true" aria-label="Finished pages" hidden>
+  <div id="r-stage"></div>
+  <textarea id="r-copy" readonly hidden aria-label="Text of the sheet"></textarea>
+  <p id="r-info" role="status"></p>
+  <div class="group">
+    <button id="r-prev" type="button">Earlier</button>
+    <button id="r-next" type="button">Later</button>
+    <button id="r-text" type="button">Copy the text</button>
+    <button id="r-save" type="button">Save the image</button>
+    <button id="r-del" type="button">Delete all pages</button>
+    <span id="r-sure" hidden>Delete all pages for ever? <button id="r-yes" type="button">Yes, delete</button> <button id="r-no" type="button">No, keep</button></span>
+    <button id="r-close" type="button">Close</button>
+  </div>
+</section>
+
+<script src="synth.js"></script>
+<script src="engine.js"></script>
+<script src="engine-a.js"></script>
+<script src="engine-c.js"></script>
+<script src="scene-a.js" onerror="this.remove()"></script>
+<script src="scene-b.js"></script>
+<script src="scene-c.js" onerror="this.remove()"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const Synth = globalThis.Synth;
+const SEED = 1;
+const say = (id, text) => { $(id).textContent = text; };
+const problem = (text) => { say('problem-text', text); $('problem').hidden = false; };
+$('reload').addEventListener('click', () => location.reload());
+const webglOk = () => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } };
+const fault = (text) => { $('fault').hidden = false; say('fault', ($('fault').textContent + ' ' + text).trim()); };
+const ACT_CODE = 'Backquote';                            // the key for the carriage (setting A) and for the motor (setting C)
+
+/* ====================================== the three settings ====================================== */
+const HELP_B = [
+  'Type on the keyboard of your computer. The page reads the position of each key, not the character of your keyboard layout.',
+  'Press Enter to pull the return lever. The lever feeds the paper one line and returns the carriage.',
+  'Do not type during the carriage return. The machine ignores keys until the carriage stops.',
+  'Press Backspace to move the carriage back one space. Backspace does not erase.',
+  'Hold Shift to print capital letters. The shift needs a short time to move.',
+  'The bell rings 6 spaces before the right margin. At the margin, the keys lock. Then press Enter.',
+  'If two keys follow too quickly, the type bars jam. Press Escape, click the machine, or click "Release the bars".',
+  'This machine has no key for the digit 1. Use the small letter l.',
+  'The machine does not repeat a key that you hold.',
+  'Press "New sheet" to finish the sheet. Press "Pages" to read the finished sheets. The page saves the sheets in the browser.',
+  'A sheet has 54 lines. At the end of the last line, the sheet finishes and a new sheet goes in.',
+  'Click the Victrola at the wall to start or stop the music. It is a 78 rpm disc. A program makes all sounds.',
+  'Drag to turn the view. Use the wheel to move nearer. Click the sheet or "Line" to see the typed line. "Room" shows the Victrola.'
+];
+const HELP_A = [
+  'Type on the keyboard of your computer. The page reads the position of each key, not the character of your keyboard layout.',
+  'The type bars strike the paper from below. You cannot see the line that you type.',
+  'To read the line, lift the carriage. Press the ` key (Backquote, at the top left of the keyboard), click "Lift the carriage", or click the carriage in the picture.',
+  'The keys do nothing while the carriage is up. Lower the carriage with the same key or the same button. Then type.',
+  'Press Enter to pull the return lever. The lever feeds the paper one line and returns the carriage.',
+  'This machine has no Backspace key. Backspace does nothing.',
+  'The carriage moves one space when you release a key. Hold Shift to print capital letters.',
+  'The bell rings 7 spaces before the end of the rack. At the end, the carriage stops. The keys then print on the same column. Press Enter.',
+  'If two keys follow too quickly, the type bars jam. Press Escape, click the machine, or click "Release the bars".',
+  'This machine has no keys for the digits 0 and 1. Use the letters O and l.',
+  'The machine does not repeat a key that you hold.',
+  'Press "New sheet" to finish the sheet. Press "Pages" to read the finished sheets. The page saves the sheets in the browser.',
+  'A sheet has 54 lines. At the end of the last line, the sheet finishes and a new sheet goes in.',
+  'Click the music player in the picture to start or stop the music. A program makes all sounds.',
+  'Drag to turn the view. Use the wheel to move nearer.'
+];
+const HELP_C = [
+  'Type on the keyboard of your computer. The page reads the position of each key, not the character of your keyboard layout.',
+  'The motor must run before the keys print. Press the ` key (Backquote, at the top left of the keyboard), click "Motor: off", or click the switch in the picture.',
+  'Wait until the motor is at full speed. Then the keys print. Use the same key or the same button to stop the motor.',
+  'The machine prints one character in each cycle. It stores 2 keys while it is busy.',
+  'Press Enter for the return. The carrier goes to the left margin and the paper feeds one line.',
+  'Press the Down Arrow key for the index key. The paper feeds one line and the carrier does not move.',
+  'Press Backspace to move the carrier back one space. Backspace does not erase.',
+  'Hold Shift to print capital letters. The element turns half a turn.',
+  'The bell rings 10 spaces before the right stop. At the right stop, the keys lock. Then press Enter.',
+  'This machine has no type bars, so it does not jam.',
+  'The page does not repeat a key that you hold.',
+  'Press "New sheet" to finish the sheet. Press "Pages" to read the finished sheets. The page saves the sheets in the browser.',
+  'A sheet has 54 lines. At the end of the last line, the sheet finishes and a new sheet goes in.',
+  'Click the music player in the picture to start or stop the music. A program makes all sounds.',
+  'Drag to turn the view. Use the wheel to move nearer.'
+];
+const HELP_SOUND = ['Click "Machine sound" to change between version 2 and version 1 of the machine sounds. Version 2 uses measurements of a real typewriter. The page keeps your choice.'];
+const SETTINGS = {
+  a: { key: 'A', year: '1897', name: '1897, a news office', machine: 'Remington Standard No. 2', engine: 'TypeEngineA', scene: 'buildSceneA', help: HELP_A,
+       label: 'A 1897 news office with a Remington Standard No. 2 typewriter.', jam: true },
+  b: { key: 'B', year: '1927', name: '1927, a writer\'s room', machine: 'Remington Portable No. 2', engine: 'TypeEngine', scene: 'buildSceneB', help: HELP_B,
+       label: 'A 1927 writing desk with a Remington Portable typewriter. A Victrola stands at the wall.', jam: true },
+  c: { key: 'C', year: '1962', name: '1962, an office', machine: 'IBM Selectric', engine: 'SelectricEngine', scene: 'buildSceneC', help: HELP_C,
+       label: 'A 1962 office with an IBM Selectric typewriter.', jam: false }
+};
+function pickSetting() {
+  let q = null, saved = null;
+  try { q = new URLSearchParams(location.search).get('setting'); } catch (e) {}
+  if (SETTINGS[q]) return q;
+  try { saved = localStorage.getItem('typedpage.setting'); } catch (e) {}
+  return SETTINGS[saved] ? saved : 'b';
+}
+
+/* ====================================== state of the chosen setting ====================================== */
+let id = pickSetting(), cfg = SETTINGS[id];
+let Engine = null, SNAP = null, K = null, NB = 0, timing = null, times = null, machineCodes = new Set();
+const rest = new Float32Array(512);
+let snap = rest;
+const shownRest = new Float32Array(512);
+let gen = 0, switching = false;                          // gen: each change of setting makes a new number; old async work stops when it sees another number
+
+/* ====================================== the text grid (the scene owns the ink on the sheet) ====================================== */
+const grid = [];                                         // grid[line][column] = character
+function record(ev) {
+  place(ev);
+  if ($('state-panel').hidden && $('fallback').hidden) return;
+  showGrid();
+}
+function gridText() {
+  const out = [];
+  for (let l = 0; l < grid.length; l++) { const row = grid[l] || []; let s = ''; for (let c = 0; c < row.length; c++) s += row[c] || ' '; out.push(s.replace(/ +$/, '')); }
+  return out.join('\n').replace(/\n+$/, '');
+}
+function showGrid() { const text = gridText(); say('grid', text); say('plain', text); }
+const place = (ev) => { const l = Math.round(ev.line), c = Math.round(ev.column); (grid[l] || (grid[l] = []))[c] = ev.ch; };
+
+/* ====================================== the picture ====================================== */
+let view = null, fitFn = null, threeP = null;
+async function buildView(g) {
+  $('fallback').hidden = true;
+  const make = globalThis[cfg.scene];
+  if (typeof make !== 'function') {                      // the scene file is missing: plain text over the dark page
+    $('fallback').hidden = false; showGrid();
+    for (const n of ['machine', 'line', 'room']) $('v-' + n).hidden = true;
+    return;
+  }
+  let THREE;
+  try { THREE = await (threeP || (threeP = import('https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js'))); }
+  catch (e) {
+    threeP = null; $('fallback').hidden = false; showGrid();
+    problem('The 3D library did not load. The computer has no internet connection, or the connection is blocked. Connect the computer to the internet. Then load the page again. The text view works now.'); return;
+  }
+  if (g !== gen) return;                                 // the user changed the setting while the library loaded
+  let v;
+  try { v = make(THREE, $('view'), { engine: Engine, seed: SEED }); }
+  catch (e) {
+    $('fallback').hidden = false; showGrid();
+    if (!webglOk()) problem('This browser cannot use WebGL. The page cannot show the 3D picture. Turn on hardware acceleration in the browser settings, or use a different browser. Then load the page again. The sound and the text view work now.');
+    else fault('This browser cannot show the 3D picture. The sound and the typed text continue to work. Message: ' + e.message);
+    return;
+  }
+  view = v;
+  if (typeof view.replay === 'function' && prints.length) { try { view.replay(prints); } catch (e) {} }   // the saved sheet comes back on the paper
+  globalThis.deskScene = view;                           // for checks in the browser tools
+  fitFn = () => view.resize(window.innerWidth, window.innerHeight);
+  window.addEventListener('resize', fitFn); fitFn();
+  const names = Array.isArray(view.views) ? view.views : ['machine', 'line', 'room'];
+  for (const n of ['machine', 'line', 'room']) $('v-' + n).hidden = names.indexOf(n) < 0;
+  setViewButtons(view.view || names[0]);
+  if (ctx && view.setReady) view.setReady(true);
+}
+
+const START_TEXT = $('start').textContent;
+const startEl = { set hidden(v) { if (!v) { lastStatus = ''; say('status', START_TEXT); } } };
+/* ====================================== the sound and the engine: one AudioWorklet ====================================== */
+/* This function is the body of the worklet. The page sends its text, with the text of the engine class of the setting, in a data: URL. */
+function workletBody() {
+  const FADE = 96;                                       // samples of the fade when a jam stops a strike sound
+  class Machine extends AudioWorkletProcessor {
+    constructor(options) {
+      super();
+      const o = options.processorOptions;
+      this.eng = new Engine({ sampleRate: sampleRate, seed: o.seed, timing: o.timing });
+      this.velPow = o.timing.velPow;
+      this.buf = null; this.voices = []; this.frame = 0; this.blocks = 0;
+      this.snap = new Float32Array(Engine.SNAP.LEN);
+      this.port.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === 'buffers') this.buf = m;
+        else if (m.type === 'down') this.eng.keyDown(m.code);
+        else if (m.type === 'up') this.eng.keyUp(m.code);
+        else if (m.type === 'release') this.eng.release();
+        else if (m.type === 'lift' && this.eng.liftCarriage) this.eng.liftCarriage();
+        else if (m.type === 'lower' && this.eng.lowerCarriage) this.eng.lowerCarriage();
+        else if (m.type === 'power' && this.eng.setPower) this.eng.setPower(m.on);
+        else if (m.type === 'sheet' && this.eng.newSheet) this.eng.newSheet(m.column, m.line);
+      };
+    }
+    play(data, at, gain, bar) { this.voices.push({ data: data, pos: 0, at: at, gain: gain, bar: bar, fade: -1 }); }
+    process(inputs, outputs) {
+      const out = outputs[0][0], n = out.length, evs = this.eng.advance(n), b = this.buf, vs = this.voices;
+      for (let k = 0; k < evs.length && b; k++) {        // each event starts its sound at its own sample
+        const ev = evs[k], at = Math.max(0, Math.min(n - 1, ev.at - this.frame)), r = ev.r || 0;
+        if (ev.type === 'drive') {                       // the strike sound starts with the key; its type impact is at the print
+          let j = 0;
+          for (let q = 1; q < b.vels.length; q++) if (Math.abs(b.vels[q] - ev.force) < Math.abs(b.vels[j] - ev.force)) j = q;
+          this.play(b.strikes[j][r % b.strikes[j].length], at, Math.pow(ev.force / b.vels[j], this.velPow), ev.bar);
+        } else if (ev.type === 'space') this.play(b.space[r % b.space.length], at, 1, -1);
+        else if (ev.type === 'backspace') this.play(b.space[0], at, 0.5, -1);
+        else if (ev.type === 'bell') this.play(b.bell, at, 1, -1);
+        else if (ev.type === 'returnStart') this.play(b.ret[r % b.ret.length], at, 1, -1);
+        else if (ev.type === 'linefeed') this.play(b.linefeed[r % b.linefeed.length], at, 1, -1);
+        else if (ev.type === 'jam') { for (let q = 0; q < vs.length; q++) if (ev.bars.indexOf(vs[q].bar) >= 0 && vs[q].fade < 0) vs[q].fade = FADE; }
+      }
+      for (let k = vs.length - 1; k >= 0; k--) {
+        const v = vs[k], d = v.data;
+        let i = v.at, p = v.pos, done = false;
+        v.at = 0;
+        for (; i < n && p < d.length; i++, p++) {
+          if (v.fade < 0) out[i] += d[p] * v.gain;
+          else { out[i] += d[p] * v.gain * v.fade / FADE; if (--v.fade <= 0) { done = true; break; } }
+        }
+        v.pos = p;
+        if (done || p >= d.length) vs.splice(k, 1);
+      }
+      for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(out);
+      this.frame += n;
+      if (evs.length || ++this.blocks >= 6) {            // state for the picture: about 60 times in one second, and at once with each event
+        this.blocks = 0;
+        this.port.postMessage({ s: this.eng.snapshot(this.snap), ev: evs });
+      }
+      return true;
+    }
+  }
+  registerProcessor('machine', Machine);
+}
+
+function renderBuffers(sr) {                             // Synth makes each buffer one time, from the sounds of the chosen setting
+  const B = Synth[cfg.key], vels = [0.6, 0.72, 0.84, 0.96], seq = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+  return {
+    type: 'buffers', vels,
+    strikes: vels.map((v, j) => seq(6, (i) => B.strike(sr, SEED + 100 + j * 6 + i, { velocity: v }))),
+    space: seq(3, (i) => B.space(sr, SEED + 200 + i, { velocity: 0.85 })),
+    ret: seq(2, (i) => B.ret(sr, SEED + 300 + i, { velocity: 0.85 })),
+    linefeed: seq(2, (i) => B.linefeed(sr, SEED + 400 + i, { velocity: 0.85 })),
+    bell: B.bell(sr, SEED + 500, { velocity: 0.85 })
+  };
+}
+
+let ctx = null, node = null, musicGain = null, motorGain = null, motorSrc = null, soundText = 'not started';
+const lastEvents = [];
+/* A key goes to the machine only when the machine runs. The page does not keep keys for later: kept keys would all arrive at the same instant and jam. */
+const send = (m) => { if (node && ctx && ctx.state === 'running') { node.port.postMessage(m); return true; } return false; };
+
+function start() {                                       // only after a key or a click
+  if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+  if (soundText === 'not available' || !Engine) return;
+  if (!window.AudioContext || !window.AudioWorkletNode) {
+    say('status', 'The machine does not run in this browser.'); soundText = 'not available';
+    problem('This browser cannot run AudioWorklet. The machine and the sound do not work. Use a current version of Chrome, Edge, Firefox or Safari. Then load the page again.');
+    return;
+  }
+  const g = gen, c = ctx = new AudioContext({ latencyHint: 'interactive' });
+  musicGain = c.createGain(); musicGain.gain.value = Number($('vol').value); musicGain.connect(c.destination);
+  const buffers = renderBuffers(c.sampleRate), bufVer = Synth.P.common.machineVersion;   // before the machine runs, so that this work does not delay a key
+  if (cfg.key === 'C') {                                 // the idle motor loop runs all the time; its level follows the motor speed
+    const m = Synth.C.motor(c.sampleRate, SEED), mb = c.createBuffer(1, m.length, c.sampleRate);
+    mb.copyToChannel(m, 0);
+    motorGain = c.createGain(); motorGain.gain.value = 0; motorGain.connect(c.destination);
+    motorSrc = c.createBufferSource(); motorSrc.buffer = mb; motorSrc.loop = true; motorSrc.connect(motorGain); motorSrc.start();
+  }
+  const text = 'var Engine = ' + Engine.source + ';\n(' + workletBody.toString() + ')();';
+  Promise.resolve().then(() => c.audioWorklet.addModule('data:text/javascript;charset=utf-8,' + encodeURIComponent(text))).then(() => {
+    if (g !== gen || ctx !== c) return;                  // the setting changed while the worklet loaded
+    const n = new AudioWorkletNode(c, 'machine', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { seed: SEED, timing } });
+    n.port.onmessage = (e) => {
+      snap = e.data.s;
+      if (motorGain) motorGain.gain.setTargetAtTime(Math.max(0, Math.min(1, snap[SNAP.MOTOR])), c.currentTime, 0.04);
+      for (const ev of e.data.ev) onEvent(ev);
+    };
+    n.connect(c.destination);
+    n.port.postMessage(bufVer === Synth.P.common.machineVersion ? buffers : renderBuffers(c.sampleRate));   // the version can change while the worklet loads
+    if (restoredPos) n.port.postMessage({ type: 'sheet', column: restoredPos.column, line: restoredPos.line });   // the saved sheet: the machine goes to its position
+    node = n;
+    const shown = () => { if (ctx !== c) return; startEl.hidden = c.state === 'running'; soundText = c.state === 'running' ? 'on, ' + c.sampleRate + ' Hz' : 'stopped by the browser'; };
+    c.addEventListener('statechange', shown); shown();
+    return c.resume();
+  }).catch((e) => { if (g !== gen) return; soundText = 'not available'; say('status', 'The machine did not start.'); problem('The machine did not start. The browser gave this message: ' + e.message + '. Load the page again.'); });
+}
+
+/* Machine sound version (Synth.P.common.machineVersion): 2 is tuned to measurements of a real typewriter, 1 is the first version.
+ * A click renders the machine buffers of the current setting again. The music and the motor loop do not change. */
+const VER_KEY = 'typedpage.machineSound';
+try { const v = Number(localStorage.getItem(VER_KEY)); if (v === 1 || v === 2) Synth.P.common.machineVersion = v; } catch (e) {}
+const showVer = () => say('m-ver', 'Machine sound: ' + Synth.P.common.machineVersion);
+showVer();
+$('m-ver').addEventListener('click', () => {
+  const v = Synth.P.common.machineVersion === 1 ? 2 : 1;
+  Synth.P.common.machineVersion = v; showVer();
+  try { localStorage.setItem(VER_KEY, String(v)); } catch (e) {}
+  if (node && ctx) node.port.postMessage(renderBuffers(ctx.sampleRate));
+  $('m-ver').blur();
+});
+
+/* Events and their sounds. Sound: drive (strike), space, backspace (the space sound, lower level), bell, returnStart, linefeed.
+ * No sound in Synth for: lift, lifted, lower, seated, endstop (A); motorOn, motorReady, motorOff, motorStopped, cycleStart, cycleEnd, shift (C);
+ * print, release, returnEnd (all). The motor loop of C is separate: its level follows the motor speed in the snapshot. */
+function onEvent(ev) {
+  if (view) view.event(ev);
+  if (ev.type === 'print') { record(ev); prints.push(ev); restoredPos = null; scheduleSave(); }
+  let t = ev.type;
+  if (ev.type === 'print') t = 'print "' + ev.ch + '" column ' + ev.column.toFixed(2) + ' line ' + ev.line.toFixed(2) + ' force ' + ev.force.toFixed(2);
+  else if (ev.type === 'drive') return;
+  else if (ev.type === 'jam' || ev.type === 'release') t += ' bars ' + ev.bars.join(',');
+  else if (ev.column !== undefined) t += ' column ' + ev.column.toFixed(2);
+  lastEvents.push((ev.at / (ctx ? ctx.sampleRate : 48000)).toFixed(3) + ' s  ' + t);
+  if (lastEvents.length > 6) lastEvents.shift();
+}
+
+/* ====================================== input: the position of the key ====================================== */
+const down = new Set();
+const ready = () => { start(); if (view && view.setReady) view.setReady(true); };
+const lifted = () => (snap[SNAP.FLAGS] & Engine.FLAG_LIFT) !== 0;
+const powered = () => snap[SNAP.POWER] > 0;
+let powerWant = false;
+function toggleLift() { if (cfg.key === 'A') send({ type: lifted() ? 'lower' : 'lift' }); }
+function toggleMotor() { if (cfg.key === 'C' && send({ type: 'power', on: !powerWant })) powerWant = !powerWant; }
+const act = () => { if (cfg.key === 'A') toggleLift(); else if (cfg.key === 'C') toggleMotor(); };
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (readerOpen) { if (e.code === 'Escape') { e.preventDefault(); closeReader(); } return; }   // typing is off while the reader is open
+  if (e.target && e.target.tagName === 'INPUT' && (e.target.id === 'tin' || !machineCodes.has(e.code))) return;
+  if (e.target && e.target.closest && e.target.closest('button, a, input, select, textarea') && (e.code === 'Space' || e.code === 'Enter')) return;   // the control keeps Space and Enter
+  ready();
+  if (e.code === 'Escape') { send({ type: 'release' }); return; }
+  if (e.code === ACT_CODE && cfg.key !== 'B') { e.preventDefault(); if (!e.repeat) act(); return; }
+  if (!machineCodes.has(e.code)) return;                 // the machine does not have this key
+  e.preventDefault();
+  if (e.repeat || down.has(e.code)) return;              // the machine does not repeat a key
+  down.add(e.code); send({ type: 'down', code: e.code });
+});
+window.addEventListener('keyup', (e) => {
+  if (readerOpen || !machineCodes.has(e.code)) return;
+  if (!down.has(e.code) && e.target && e.target.closest && e.target.closest('button, a, input, select, textarea') && (e.code === 'Space' || e.code === 'Enter')) return;
+  e.preventDefault();
+  if (down.delete(e.code)) send({ type: 'up', code: e.code });
+});
+window.addEventListener('blur', () => { for (const c of down) send({ type: 'up', code: c }); down.clear(); });
+window.addEventListener('pointerdown', ready);
+$('release').addEventListener('click', () => { send({ type: 'release' }); $('release').blur(); });
+$('act').addEventListener('click', () => { act(); $('act').blur(); });
+
+/* pointer on the picture: drag turns the view; a click without a drag picks an object */
+let cv = null, drag = null, lastHover = 0;
+const hasView = (n) => !!view && (!Array.isArray(view.views) || view.views.indexOf(n) >= 0);
+function bindCanvas(c) {
+  cv = c; drag = null;
+  c.setAttribute('aria-label', cfg.label);
+  c.addEventListener('webglcontextlost', (e) => { e.preventDefault(); problem('The browser stopped the graphics context. The picture is gone. Load the page again to get the picture back.' + (storeReady ? ' The pages that you typed stay saved.' : '')); });
+  c.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, moved: false, id: e.pointerId }; c.setPointerCapture(e.pointerId); });
+  c.addEventListener('pointermove', (e) => {
+    if (drag) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) > 5) { drag.moved = true; c.classList.add('drag'); }
+      if (drag.moved && view && view.orbit) { view.orbit(dx, dy); drag.x = e.clientX; drag.y = e.clientY; }
+      return;
+    }
+    if (view && e.timeStamp - lastHover > 90) {
+      lastHover = e.timeStamp; const pid = view.pick(e.clientX, e.clientY);
+      c.classList.toggle('hot', pid === 'player' || pid === 'sheet' || (pid === 'carriage' && cfg.key === 'A') || (pid === 'switch' && cfg.key === 'C') || ((pid === 'bars' || pid === 'machine') && jammed()));
+    }
+  });
+  c.addEventListener('pointerup', (e) => {
+    if (!drag) return;
+    const wasDrag = drag.moved; drag = null; c.classList.remove('drag');
+    if (wasDrag || !view) return;
+    const pid = view.pick(e.clientX, e.clientY);
+    if (pid === 'player') toggleMusic();
+    else if (pid === 'carriage') toggleLift();
+    else if (pid === 'switch') toggleMotor();
+    else if ((pid === 'bars' || pid === 'machine') && jammed()) send({ type: 'release' });   // a thin bar is hard to hit: the whole machine counts
+    else if (pid === 'sheet' && view.view !== 'line' && hasView('line')) setView('line');
+  });
+  c.addEventListener('pointercancel', () => { drag = null; c.classList.remove('drag'); });
+  c.addEventListener('wheel', (e) => { e.preventDefault(); if (view && view.zoom) view.zoom(e.deltaY); }, { passive: false });
+}
+const jammed = () => Engine && (snap[SNAP.FLAGS] & Engine.FLAG_JAM) !== 0;
+function setViewButtons(name) { for (const n of ['machine', 'line', 'room']) $('v-' + n).setAttribute('aria-pressed', String(name === n)); }
+function setView(name) {
+  if (!view) return;
+  view.setView(name);
+  setViewButtons(name);
+}
+$('v-machine').addEventListener('click', () => { setView('machine'); $('v-machine').blur(); });
+$('v-line').addEventListener('click', () => { setView('line'); $('v-line').blur(); });
+$('v-room').addEventListener('click', () => { setView('room'); $('v-room').blur(); });
+function panel(btn, pid) {
+  $(btn).addEventListener('click', () => {
+    const open = $(pid).hidden;
+    for (const [b, p] of [['p-help', 'help'], ['p-state', 'state-panel']]) { $(p).hidden = true; $(b).setAttribute('aria-pressed', 'false'); }
+    $(pid).hidden = !open; $(btn).setAttribute('aria-pressed', String(open)); $(btn).blur();
+    if (open && pid === 'state-panel') { lastText = 0; showGrid(); }
+  });
+}
+panel('p-help', 'help'); panel('p-state', 'state-panel');
+
+/* ====================================== music: the disc of the setting on the device of the setting ====================================== */
+let musicBuf = null, musicSrc = null, musicBusy = false, note = '';
+$('vol').addEventListener('input', () => { if (musicGain) musicGain.gain.value = Number($('vol').value); });
+$('vol').addEventListener('change', () => $('vol').blur());
+async function toggleMusic() {
+  start();
+  if (!ctx || musicBusy) return;
+  if (musicSrc) { musicSrc.stop(); musicSrc = null; showMusic(false); return; }
+  const g = gen, c = ctx;
+  if (!musicBuf) {
+    musicBusy = true; $('music').disabled = true; note = 'Wait. The program makes the music.';
+    await new Promise((ok) => setTimeout(ok, 60));       // let the browser show the text first
+    if (g !== gen) return;
+    const sr = c.sampleRate, S = Synth[cfg.key], wet = S.medium(sr, SEED, { input: S.music(sr, SEED) });
+    const chans = wet instanceof Float32Array ? [wet] : [wet.L, wet.R];   // setting C has a stereo device
+    musicBuf = c.createBuffer(chans.length, chans[0].length, sr);
+    chans.forEach((x, i) => musicBuf.copyToChannel(x, i));
+    musicBusy = false; $('music').disabled = false; note = '';
+  }
+  musicSrc = c.createBufferSource(); musicSrc.buffer = musicBuf; musicSrc.loop = true;
+  musicSrc.connect(musicGain); musicSrc.start();
+  showMusic(true);
+}
+function showMusic(on) { say('music', on ? 'Music: on' : 'Music: off'); $('music').setAttribute('aria-pressed', String(on)); if (view && view.setMusic) view.setMusic(on); }
+$('music').addEventListener('click', () => { toggleMusic(); $('music').blur(); });
+
+/* ====================================== readout and loop ====================================== */
+let lastText = 0, lastStatus = '', lastAct = '';
+function actLabel() {
+  if (cfg.key === 'A') return lifted() ? 'Lower the carriage (` key)' : 'Lift the carriage (` key)';
+  return powered() ? 'Motor: on (` key)' : 'Motor: off (` key)';
+}
+function readout(now) {
+  if (now - lastText < 120) return;
+  lastText = now;
+  const s = snap, fl = s[SNAP.FLAGS], jam = fl & Engine.FLAG_JAM, lock = fl & Engine.FLAG_LOCK, ret = fl & Engine.FLAG_RETURN, A = cfg.key === 'A', C = cfg.key === 'C';
+  const up = A && (fl & Engine.FLAG_LIFT), end = A && (fl & Engine.FLAG_ENDSTOP), on = C && powered(), run = C && (fl & Engine.FLAG_MOTOR);
+  const alert = jam || (A && !ret && (up || end)) || (!A && lock && !ret) || (C && !run);
+  const st = note || (jam ? 'The type bars are in a jam. Press Escape or click the machine to release them.'
+    : up ? 'The carriage is up. The keys do not print. Press the ` key to lower the carriage.'
+    : A ? (end && !ret ? 'The carriage is at the end of the rack. Press Enter to return the carriage.' : !node ? '' : 'The machine is ready. Type on your keyboard.')
+    : C && node && !on ? 'The motor is off. The keys do not print. Press the ` key or click "Motor: off" to start the motor.'
+    : C && node && !run ? 'The motor starts. Wait for full speed. Then the keys print.'
+    : lock && !ret ? 'The keys are locked at the right margin. Press Enter to return the carriage.'
+    : !node ? '' : 'The machine is ready. Type on your keyboard.');
+  if (st && st !== lastStatus) { lastStatus = st; $('status').className = alert ? 'alert' : ''; say('status', st); }
+  if (cfg.key !== 'B') { const l = actLabel(); if (l !== lastAct) { lastAct = l; say('act', l); $('act').setAttribute('aria-pressed', String(A ? !!up : !!on)); } }
+  if ($('state-panel').hidden) return;
+  let moving = 0;
+  for (let i = 0; i < NB; i++) if (s[SNAP.BARS + i] > 0) moving++;
+  const v = view && view.stats ? view.stats() : null;
+  const cond = !node ? 'not started' : jam ? 'jam' : ret ? 'carriage return in progress' : A ? (up ? 'carriage up' : end ? 'end of the rack' : 'ready')
+    : C ? (!on ? 'motor off' : !run ? 'motor starts' : lock ? 'keys locked' : 'ready') : lock ? 'keys locked' : 'ready';
+  say('state', [
+    'Condition:        ' + cond,
+    (C ? 'Carrier column:   ' : 'Carriage column:  ') + s[SNAP.X].toFixed(2) + '   (' + (C ? 'target column ' : 'escapement column ') + s[SNAP.TARGET] + ')',
+    'Line:             ' + s[SNAP.LINE].toFixed(2),
+    'Shift position:   ' + s[SNAP.SHIFT].toFixed(2),
+    C ? 'Motor speed:      ' + s[SNAP.MOTOR].toFixed(2) + '   (switch ' + (on ? 'on' : 'off') + ')' : 'Type bars up:     ' + moving,
+    ...(A ? ['Carriage lift:    ' + s[SNAP.LIFT].toFixed(2) + '   (0 is down, 1 is up)'] : []),
+    ...(C ? ['Element:          tilt ' + s[SNAP.TILT].toFixed(2) + ', rotation ' + s[SNAP.ROTATION].toFixed(0) + ' deg, ' + s[SNAP.QUEUE] + ' stored keys'] : []),
+    'Bell column:      ' + (K.LINE_COLS - K.BELL_BEFORE) + '   ' + (A ? 'End of the rack: ' : 'Lock column: ') + K.LINE_COLS,
+    times.jamBelow > 0 ? 'Jam:              two keys with a gap of less than ' + times.jamBelow.toFixed(0) + ' ms' : 'Jam:              this machine does not jam',
+    C ? 'Print cycle:      ' + times.cycleMs.toFixed(0) + ' ms   Motor run-up: ' + times.runUpMs.toFixed(0) + ' ms' : 'Clean print:      two prints with a gap of more than ' + times.cleanAbove.toFixed(0) + ' ms',
+    'Sound:            ' + soundText,
+    v ? 'Picture:          ' + v.frameMs.toFixed(1) + ' ms for each frame, ' + v.calls + ' draw calls, ' + v.triangles + ' triangles' : 'Picture:          not available',
+    v ? 'Sheet texture:    ' + v.sheetFull + ' full upload, ' + v.sheetPatches + ' region uploads' : '',
+    'Last events:', ...lastEvents.map((t) => '  ' + t)
+  ].join('\n'));
+}
+let lastNow = 0;
+function frame(now) {
+  const dt = lastNow ? (now - lastNow) / 1000 : 0.016; lastNow = now;
+  if (view) {
+    if (snap === rest && restoredPos) {                  // the machine has not started: show the saved carrier and line
+      shownRest.fill(0); shownRest[SNAP.X] = shownRest[SNAP.TARGET] = restoredPos.column; shownRest[SNAP.LINE] = restoredPos.line;
+      view.update(shownRest, dt);
+    } else view.update(snap, dt);
+  }
+  checkEnd();
+  readout(now);
+  requestAnimationFrame(frame);
+}
+
+/* ====================================== sheets, storage, reader ====================================== */
+const SHEET_LINES = 54;                                  // lines on one sheet: 11 in x 6 lines, less 6 lines at the top and 6 at the bottom
+let sheets = [], prints = [], restoredPos = null, resetting = false, storeReady = false, sheetsLoaded = false, saveTimer = 0, dbP = null;
+const noSave = () => { $('nosave').hidden = false; };
+const pagesLabel = () => say('pages', 'Pages' + (sheets.length ? ' (' + sheets.length + ')' : ''));
+function openDb() {
+  return dbP || (dbP = new Promise((ok, no) => {
+    try {
+      const r = indexedDB.open('typedpage', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); r.onblocked = () => no(new Error('blocked'));
+    } catch (e) { no(e); }
+  }));
+}
+async function kvGet(keys) {
+  const d = await openDb();
+  return new Promise((ok, no) => {
+    const tx = d.transaction('kv'), st = tx.objectStore('kv'), out = {};
+    keys.forEach((k) => { st.get(k).onsuccess = (e) => { out[k] = e.target.result; }; });
+    tx.oncomplete = () => ok(out); tx.onerror = tx.onabort = () => no(tx.error);
+  });
+}
+async function kvPut(obj) {
+  const d = await openDb();
+  return new Promise((ok, no) => {
+    const tx = d.transaction('kv', 'readwrite'), st = tx.objectStore('kv');
+    for (const k of Object.keys(obj)) st.put(obj[k], k);
+    tx.oncomplete = ok; tx.onerror = tx.onabort = () => no(tx.error);
+  });
+}
+function curPos() {                                      // where the machine is on the current sheet
+  if (restoredPos) return restoredPos;
+  return node ? { column: Math.round(snap[SNAP.TARGET]), line: Math.ceil(snap[SNAP.LINE] - 1e-6) } : { column: 0, line: 0 };
+}
+function saveNow() {
+  clearTimeout(saveTimer); saveTimer = 0;
+  if (!storeReady) return;
+  const p = curPos(), vals = { sheets: sheets.slice() };
+  vals['cur-' + id] = { setting: id, text: gridText(), prints, column: p.column, line: p.line };
+  kvPut(vals).catch(() => { dbP = null; noSave(); });
+}
+function scheduleSave() { if (storeReady && !saveTimer) saveTimer = setTimeout(saveNow, 800); }
+async function restore() {                               // the sheets list, once; the current sheet of this setting, each time
+  const g = gen;
+  storeReady = false;
+  try {
+    const r = await kvGet(['sheets', 'cur-' + id]);
+    if (g !== gen) return;
+    if (!sheetsLoaded) { sheets = Array.isArray(r.sheets) ? r.sheets : []; sheetsLoaded = true; }
+    const c = r['cur-' + id];
+    if (c && Array.isArray(c.prints) && c.prints.length && !prints.length) {
+      prints = c.prints; grid.length = 0;
+      for (const ev of prints) place(ev);
+      restoredPos = { column: c.column | 0, line: c.line | 0 };
+      if (node) node.port.postMessage({ type: 'sheet', column: restoredPos.column, line: restoredPos.line });
+      showGrid();
+    }
+    storeReady = true;
+  } catch (e) { dbP = null; noSave(); }
+  pagesLabel();
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+window.addEventListener('pagehide', saveNow);
+
+function resetSheet() {                                  // a blank sheet in the picture and in the machine: line 0, left margin
+  grid.length = 0; restoredPos = null;
+  if (node) { node.port.postMessage({ type: 'sheet', column: 0, line: 0 }); resetting = true; }
+  if (view && typeof view.newSheet === 'function') view.newSheet();
+  showGrid();
+}
+function finishSheet() {
+  if (prints.length) { sheets.push({ setting: id, text: gridText(), prints }); prints = []; }
+  resetSheet(); pagesLabel(); saveNow();
+}
+function checkEnd() {                                    // the end of the last line finishes the sheet
+  if (!node) return;
+  const l = snap[SNAP.LINE];
+  if (resetting) { if (l < SHEET_LINES) resetting = false; return; }
+  if (l >= SHEET_LINES && !(snap[SNAP.FLAGS] & Engine.FLAG_RETURN)) finishSheet();
+}
+$('newsheet').addEventListener('click', () => { finishSheet(); $('newsheet').blur(); });
+
+let readerOpen = false, rIdx = 0, rCanvas = null;
+function showSheet() {
+  const st = $('r-stage'), n = sheets.length, s = sheets[rIdx];
+  st.textContent = ''; rCanvas = null; $('r-copy').hidden = true; $('r-sure').hidden = true; $('r-del').hidden = false;
+  $('r-prev').disabled = rIdx <= 0; $('r-next').disabled = rIdx >= n - 1;
+  $('r-text').disabled = !n; $('r-del').disabled = !n;
+  if (!n) { say('r-info', 'There are no finished pages. Press "New sheet" to finish the sheet that you type.'); $('r-save').disabled = true; return; }
+  if (s.setting === id && view && typeof view.renderSheet === 'function') { try { rCanvas = view.renderSheet(s.prints); } catch (e) { rCanvas = null; } }
+  if (rCanvas) {
+    rCanvas.setAttribute('role', 'img'); rCanvas.setAttribute('aria-label', 'The picture of sheet ' + (rIdx + 1) + '. Use "Copy the text" to get the text.');
+    st.appendChild(rCanvas);
+  } else {
+    const pre = document.createElement('pre'); pre.textContent = s.text || '(empty sheet)'; st.appendChild(pre);
+  }
+  $('r-save').disabled = !rCanvas;
+  say('r-info', 'Sheet ' + (rIdx + 1) + ' of ' + n + ', ' + SETTINGS[s.setting].year + (rCanvas ? '' : '. The picture of this sheet is not available now. The page shows the text.'));
+}
+function openReader() {
+  for (const c of down) send({ type: 'up', code: c }); down.clear();
+  tq.length = 0;
+  readerOpen = true; rIdx = Math.max(0, sheets.length - 1);
+  $('reader').hidden = false; showSheet(); $('r-close').focus();
+}
+function closeReader() {
+  if (!readerOpen) return;
+  readerOpen = false; $('reader').hidden = true; $('r-stage').textContent = ''; rCanvas = null; $('pages').blur(); $('r-close').blur();
+}
+$('pages').addEventListener('click', openReader);
+$('r-close').addEventListener('click', closeReader);
+$('r-prev').addEventListener('click', () => { if (rIdx > 0) { rIdx--; showSheet(); } });
+$('r-next').addEventListener('click', () => { if (rIdx < sheets.length - 1) { rIdx++; showSheet(); } });
+$('r-text').addEventListener('click', async () => {
+  const text = sheets[rIdx] ? sheets[rIdx].text : '', ta = $('r-copy');
+  let done = false;
+  try { await navigator.clipboard.writeText(text); done = true; } catch (e) {}
+  if (!done) {                                            // fallback: show the text, select it, and try the old copy command
+    ta.hidden = false; ta.value = text; ta.focus(); ta.select();
+    try { done = document.execCommand('copy'); } catch (e) {}
+  }
+  say('r-info', done ? 'The text is copied.' : 'The browser did not copy the text. The text is selected below. Press Ctrl+C to copy it.');
+});
+$('r-save').addEventListener('click', () => {
+  if (!rCanvas) return;
+  const n = rIdx + 1;
+  try {
+    rCanvas.toBlob((b) => {
+      if (!b) { say('r-info', 'The browser could not make the image.'); return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'typed-page-' + n + '.png';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, 'image/png');
+  } catch (e) { say('r-info', 'The browser could not make the image.'); }
+});
+$('r-del').addEventListener('click', () => { $('r-del').hidden = true; $('r-sure').hidden = false; $('r-no').focus(); });
+$('r-no').addEventListener('click', () => { $('r-sure').hidden = true; $('r-del').hidden = false; $('r-del').focus(); });
+$('r-yes').addEventListener('click', () => { sheets = []; rIdx = 0; pagesLabel(); saveNow(); showSheet(); $('r-close').focus(); });
+
+/* ====================================== touch: a small text field opens the keyboard of the device ====================================== */
+let charMap = {}, tRun = false;
+const tq = [];                                           // characters that wait for the machine
+const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const FIX = { '\u2018': "'", '\u2019': "'", '\u201A': "'", '\u201C': '"', '\u201D': '"', '\u201E': '"', '\u2013': '-', '\u2014': '-', '\u2015': '-', '\u2212': '-', '\u00A0': ' ', '\u2009': ' ', '\u202F': ' ' };
+function queueChar(ch) {
+  if (ch === '\u2026') { queueChar('.'); queueChar('.'); queueChar('.'); return; }
+  ch = FIX[ch] || ch;
+  if (tq.length > 400) return;
+  if (ch === '\n' || ch === '\r') tq.push({ code: 'Enter' });
+  else if (ch === '\b') tq.push({ code: 'Backspace' });
+  else if (charMap[ch]) tq.push(charMap[ch]);              // a character that the machine does not have is skipped
+  drain();
+}
+async function drain() {                                  // one key at a time. The gap is above the jam gap and above the gap for a clean print.
+  if (tRun) return;
+  tRun = true;
+  const g = gen, gap = Math.max(110, 1.5 * Math.max(times.jamBelow, times.cleanAbove)), shiftMs = (K.SHIFT_S ? K.SHIFT_S * 1000 : K.SHIFT_MS || 150) + 40;
+  while (tq.length && g === gen && !readerOpen) {
+    const c = tq.shift();
+    let tries = 0;
+    while (g === gen && !(node && ctx && ctx.state === 'running') && tries++ < 40) await sleep(100);   // the sound can need a moment to start
+    if (g !== gen) break;
+    if (c.shift) { send({ type: 'down', code: 'ShiftLeft' }); await sleep(shiftMs); }
+    send({ type: 'down', code: c.code }); await sleep(35); send({ type: 'up', code: c.code });
+    if (c.shift) { send({ type: 'up', code: 'ShiftLeft' }); await sleep(shiftMs); }
+    await sleep(c.code === 'Enter' ? times.returnMs + gap : gap);
+  }
+  tRun = false;
+}
+function placeTouch() {                                   // keep the field above the keyboard of the device
+  const v = window.visualViewport;
+  const off = v ? Math.max(0, window.innerHeight - v.height - v.offsetTop) : 0;
+  $('touchbar').style.bottom = off + 'px';
+  $('bottom').style.bottom = $('touchbar').hidden ? '0' : (off + $('touchbar').offsetHeight) + 'px';   // the bar of controls stays above the field
+}
+if (window.visualViewport) { window.visualViewport.addEventListener('resize', placeTouch); window.visualViewport.addEventListener('scroll', placeTouch); }
+function touchClose() { $('touchbar').hidden = true; $('tin').blur(); $('bottom').style.bottom = '0'; }
+const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+const showKbd = () => { $('kbd').hidden = !(coarse && coarse.matches); };
+showKbd(); if (coarse && coarse.addEventListener) coarse.addEventListener('change', showKbd);
+$('kbd').addEventListener('click', () => { ready(); $('touchbar').hidden = false; placeTouch(); $('tin').focus(); });
+$('t-close').addEventListener('click', touchClose);
+function flushField() { const v = $('tin').value; $('tin').value = ''; for (const ch of v.normalize('NFC')) queueChar(ch); }
+$('tin').addEventListener('input', (e) => { if (!e.isComposing) flushField(); });
+$('tin').addEventListener('compositionend', flushField);
+$('tin').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); queueChar('\n'); }
+  else if (e.key === 'Backspace') queueChar('\b');
+  else if (e.key === 'Escape') touchClose();
+});
+
+/* ====================================== choose, tear down and build a setting ====================================== */
+function teardown() {
+  gen++;
+  if (view) { try { view.dispose(); } catch (e) {} view = null; globalThis.deskScene = null; }
+  if (fitFn) { window.removeEventListener('resize', fitFn); fitFn = null; }
+  if (musicSrc) { try { musicSrc.stop(); } catch (e) {} musicSrc = null; }
+  if (motorSrc) { try { motorSrc.stop(); } catch (e) {} motorSrc = null; }
+  if (node) { node.port.onmessage = null; try { node.disconnect(); } catch (e) {} node = null; }
+  if (ctx) { const c = ctx; ctx = null; try { c.close(); } catch (e) {} }
+  musicGain = null; motorGain = null; musicBuf = null; musicBusy = false; note = '';
+  soundText = 'not started'; powerWant = false;
+  closeReader(); touchClose(); tq.length = 0; prints = []; restoredPos = null; resetting = false; storeReady = false;
+  $('problem').hidden = true;
+  grid.length = 0; lastEvents.length = 0; snap = rest; down.clear(); lastStatus = ''; lastAct = '';
+  $('music').disabled = false; showMusic(false);
+  $('fault').hidden = true; $('fault').textContent = ''; $('status').className = ''; say('status', START_TEXT);
+  say('state', 'The machine is not started.'); say('grid', ''); say('plain', '');
+  const old = $('view'), fresh = old.cloneNode(false);    // a new canvas: the old one can keep its drawing context
+  fresh.className = ''; old.replaceWith(fresh);
+}
+function applySetting() {
+  cfg = SETTINGS[id];
+  Engine = globalThis[cfg.engine];
+  document.title = 'Typing desk, ' + cfg.year;
+  say('t-name', cfg.name); say('t-machine', cfg.machine);
+  for (const k of Object.keys(SETTINGS)) $('s-' + k).setAttribute('aria-pressed', String(k === id));
+  const hl = $('help-list'); hl.textContent = '';
+  for (const t of cfg.help.concat(HELP_SOUND)) { const li = document.createElement('li'); li.textContent = t; hl.appendChild(li); }
+  $('release').hidden = !cfg.jam; $('act').hidden = cfg.key === 'B';
+  bindCanvas($('view'));
+  if (!Engine) { fault('The engine file of this setting did not load. Load the page again.'); return false; }
+  SNAP = Engine.SNAP; K = Engine.K; NB = Engine.KEYS.length;
+  timing = Engine.timingFromSynth(Synth.P);
+  times = new Engine({ sampleRate: 48000, timing }).times();
+  machineCodes = new Set(Engine.KEYS.map((k) => k[0]).concat(['Space', 'Backspace', 'Enter', 'ShiftLeft', 'ShiftRight'], cfg.key === 'C' ? [Engine.CODE_INDEX] : []));
+  charMap = { ' ': { code: 'Space', shift: false } };
+  for (const k of Engine.KEYS) { charMap[k[1]] = { code: k[0], shift: false }; charMap[k[2]] = { code: k[0], shift: true }; }
+  return true;
+}
+async function choose(next, user) {
+  if (switching || (user && next === id)) return;
+  switching = true;
+  try {
+    if (user) {
+      saveNow();
+      teardown(); id = next;
+      try { localStorage.setItem('typedpage.setting', id); } catch (e) {}
+      try { history.replaceState(null, '', '?setting=' + id); } catch (e) {}
+    }
+    const ok = applySetting();
+    if (user) start();                                   // a click on the setting control is a user gesture, so the sound can start
+    await restore();
+    if (ok) await buildView(gen);
+  } finally { switching = false; }
+}
+for (const k of Object.keys(SETTINGS)) $('s-' + k).addEventListener('click', () => { choose(k, true); $('s-' + k).blur(); });
+
+await choose(id, false);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

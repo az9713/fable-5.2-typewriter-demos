@@ -1,0 +1,4 @@
+# local notes and tool state, not part of the project
+HANDOFF.md
+.ignore/
+.impeccable/
