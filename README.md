@@ -2,6 +2,8 @@
 
 Three writing desks in the browser. Each desk has a typewriter that you type on, a record player of the same period, and a room. The 3D scenes use three.js. The code makes all sounds and all music at run time. The repository holds no audio file and no image file.
 
+**[Run the live demo](https://az9713.github.io/fable-5.2-typewriter-demos/)** — [1897](https://az9713.github.io/fable-5.2-typewriter-demos/?setting=a) · [1927](https://az9713.github.io/fable-5.2-typewriter-demos/?setting=b) · [1962](https://az9713.github.io/fable-5.2-typewriter-demos/?setting=c)
+
 Written by Claude Fable 5.2.
 
 ## The three settings
@@ -15,6 +17,8 @@ Written by Claude Fable 5.2.
 A control in the top row changes the setting. Three views are available: Machine, Line and Room.
 
 ## How to run it
+
+Use the live demo above, or run the files from your disk:
 
 1. Download or clone the repository.
 2. Open `index.html` in a desktop browser. A double-click on the file is sufficient; a web server is not necessary.
