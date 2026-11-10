@@ -31,6 +31,9 @@
   #status { max-width: 46ch; color: var(--soft); font-style: italic; min-height: 1.45em; }
   #status.alert { color: var(--warm); font-style: normal; }
   #fault, #nosave { color: var(--warm); margin: 0; }
+  #credit { flex-basis: 100%; margin: 0; font-size: 11px; color: var(--muted); text-align: center; }
+  #credit a { color: var(--soft); text-decoration: none; border-bottom: 1px solid var(--line); }
+  #credit a:hover, #credit a:focus-visible { color: var(--ink); border-bottom-color: var(--warm); outline: none; }
   #problem { position: fixed; left: 50%; top: 96px; transform: translateX(-50%); width: min(460px, calc(100vw - 32px)); z-index: 5; padding: 14px 16px;
     background: var(--panel); border: 1px solid var(--warm); border-radius: 3px; color: var(--ink); }
   #problem p { margin: 0 0 10px; }
@@ -93,6 +96,7 @@
     <button id="m-ver" type="button" title="Change the machine sounds. Version 2 uses measurements of a real typewriter. Version 1 is the first version.">Machine sound: 2</button>
     <label for="vol">Volume <input id="vol" type="range" min="0" max="1" step="0.01" value="0.5"></label>
   </div>
+  <p id="credit">Inspired by <a href="https://www.youtube.com/watch?v=1gYQc4CL_oo" target="_blank" rel="noopener">Claire Vo's Claude Fable 5.2 review</a> on How I AI.</p>
 </footer>
 <section class="panel" id="help" hidden>
   <h2>How to use the machine</h2>
