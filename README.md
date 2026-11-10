@@ -22,7 +22,7 @@ Use the live demo above, or run the files from your disk:
 
 1. Download or clone the repository.
 2. Open `index.html` in a desktop browser. A double-click on the file is sufficient; a web server is not necessary.
-3. Press a key. The browser starts the sound after the first key press.
+3. Press a key or click the picture. This first key starts the machine and its sound. This first key does not print.
 
 The page needs an internet connection: it loads three.js 0.186.1 from the jsDelivr network. No other library is used.
 
